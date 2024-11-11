@@ -6,15 +6,15 @@ import random
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-pygame.display.set_caption("Claude-Crab Catch Game") # title
+pygame.display.set_caption("Claude-Crab Dodge Game")
 
 # font
 pygame.font.init()
 
 # colors
-WHITE = (255, 255, 255)
-BLACK = (0, 0, 0)
-RED = (255, 0, 0)
+white = (255, 255, 255)
+black = (0, 0, 0)
+red = (255, 0, 0)
 
 # crab creation
 class Crab(pygame.sprite.Sprite):
@@ -24,21 +24,21 @@ class Crab(pygame.sprite.Sprite):
         self.image = pygame.Surface((80, 80), pygame.SRCALPHA)
 
         # body
-        pygame.draw.rect(self.image, RED, (20, 20, 40, 30))
+        pygame.draw.rect(self.image, red, (20, 20, 40, 30))
 
         # eyes
-        pygame.draw.rect(self.image, BLACK, (25, 25, 5, 5))
-        pygame.draw.rect(self.image, BLACK, (50, 25, 5, 5))
+        pygame.draw.rect(self.image, black, (25, 25, 5, 5))
+        pygame.draw.rect(self.image, black, (50, 25, 5, 5))
 
         # claws
-        pygame.draw.rect(self.image, RED, (10, 30, 10, 10))
-        pygame.draw.rect(self.image, RED, (60, 30, 10, 10))
+        pygame.draw.rect(self.image, red, (10, 30, 10, 10))
+        pygame.draw.rect(self.image, red, (60, 30, 10, 10))
 
         # legs
-        pygame.draw.rect(self.image, RED, (20, 50, 5, 10))
-        pygame.draw.rect(self.image, RED, (25, 50, 5, 10))
-        pygame.draw.rect(self.image, RED, (50, 50, 5, 10))
-        pygame.draw.rect(self.image, RED, (55, 50, 5, 10))
+        pygame.draw.rect(self.image, red, (20, 50, 5, 10))
+        pygame.draw.rect(self.image, red, (25, 50, 5, 10))
+        pygame.draw.rect(self.image, red, (50, 50, 5, 10))
+        pygame.draw.rect(self.image, red, (50, 50, 5, 10))
 
         self.rect = self.image.get_rect()
         self.rect.x = x
@@ -64,6 +64,9 @@ class Falling(pygame.sprite.Sprite):
 
 # game setup
 def main():
+    # initialize pygame
+    pygame.init()
+
     # clock for game speed
     clock = pygame.time.Clock()
 
@@ -74,9 +77,10 @@ def main():
     all_sprites = pygame.sprite.Group(player)
     falling_objects = pygame.sprite.Group()
 
-    # score
+    # score and gave over tracking
     score = 0
-    font = pygame.font.SysFont('Bahaus', 36)
+    game_over = False
+    font = pygame.font.SysFont('Arial', 36)
 
     # game loop
     running = True
@@ -87,36 +91,54 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
+            # add restart functionality when game is over
+            if game_over and event.type == pygame.KEYDOWN and event.key == pygame.K_r:
+                # reset the game
+                player.rect.x = SCREEN_WIDTH // 2
+                player.rect.y = SCREEN_HEIGHT - 100
+                falling_objects.empty()
+                score = 0
+                game_over = False
 
-        # player movement
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_LEFT] and player.rect.left > 0:
-            player.rect.x -= player.speed
-        if keys[pygame.K_RIGHT] and player.rect.right < SCREEN_WIDTH:
-            player.rect.x += player.speed
+        # movement if game is not over
+        if not game_over:
+            # player movement
+            keys = pygame.key.get_pressed()
+            if keys[pygame.K_LEFT] and player.rect.left > 0:
+                player.rect.x -= player.speed
+            if keys[pygame.K_RIGHT] and player.rect.right < SCREEN_WIDTH:
+                player.rect.x += player.speed
 
-        # spawn falling objects
-        spawn_timer += 1
-        if spawn_timer > 60: # spawn every 60 frames
-            falling_objects.add(Falling())
-            spawn_timer = 0
+            # spawn falling objects
+            spawn_timer += 1
+            if spawn_timer > 60: # spawn every 60 frames
+                falling_objects.add(Falling())
+                spawn_timer = 0
 
-        # update
-        all_sprites.update()
-        falling_objects.update()
+            # update
+            all_sprites.update()
+            falling_objects.update()
 
-        # collision detection
-        caught = pygame.sprite.spritecollide(player, falling_objects, True)
-        score += len(caught)
+            # collision detection - game over when hit
+            if pygame.sprite.spritecollideany(player, falling_objects):
+                game_over = True
+
+            # inc score for survived objects
+            score += 1
 
         # drawing
-        screen.fill(WHITE)
+        screen.fill(white)
         all_sprites.draw(screen)
         falling_objects.draw(screen)
 
         # draw score
-        score_text = font.render(f"Score: {score}", True, BLACK)
+        score_text = font.render(f"Score: {score}", True, black)
         screen.blit(score_text, (10, 10))
+
+        # game over screen
+        if game_over:
+            game_over_text = font.render("Game Over! Press R to Restart", True, red)
+            screen.blit(game_over_text, (SCREEN_WIDTH // 2 - 200, SCREEN_HEIGHT // 2))
 
         # update display
         pygame.display.flip()
@@ -126,6 +148,6 @@ def main():
 
     pygame.quit()
 
-# run the game
+# run game
 if __name__ == "__main__":
     main()
