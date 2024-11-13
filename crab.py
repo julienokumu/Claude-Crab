@@ -2,50 +2,100 @@
 import pygame
 import random
 
-# game window
-SCREEN_WIDTH = 800
-SCREEN_HEIGHT = 600
+# game window dimensions
+SCREEN_WIDTH, SCREEN_HEIGHT = 800, 600
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-pygame.display.set_caption("Claude-Crab Dodge Game")
+pygame.display.set_caption("Claude-Crab")
 
-# font
+# initialize font
 pygame.font.init()
 
-# colors
+# define colors
 white = (255, 255, 255)
-red = (255, 0, 0)
 black = (0, 0, 0)
+red = (255, 0, 0)
 
-# crab creation
+# crab class with dynamic sizing
 class Crab(pygame.sprite.Sprite):
     def __init__(self, x, y):
         super().__init__()
-        # blank space to draw crab
-        self.image = pygame.Surface((80, 80), pygame.SRCALPHA)
+        # initialize size parameters
+        self.base_width = 80
+        self.base_height = 60
+        self.current_width = self.base_width
+        self.current_height = self.base_height
 
-        # body
-        pygame.draw.rect(self.image, red, (20, 20, 40, 30))
+        # create a surface that can change size
+        self.image = pygame.Surface((self.current_width, self.current_height), pygame.SRCALPHA)
 
-        # eyes
-        pygame.draw.rect(self.image, black, (25, 25, 5, 5))
-        pygame.draw.rect(self.image, black, (50, 25, 5, 5))
+        # draw initial crab
+        self.draw_crab()
 
-        # claws
-        pygame.draw.rect(self.image, red, (10, 30, 10, 10))
-        pygame.draw.rect(self.image, red, (60, 30, 10, 10))
-
-        # legs
-        pygame.draw.rect(self.image, red, (20, 50, 5, 10))
-        pygame.draw.rect(self.image, red, (25, 50, 5, 10))
-        pygame.draw.rect(self.image, red, (50, 50, 5, 10))
-        pygame.draw.rect(self.image, red, (55, 50, 5, 10))
-
+        # set up positioning and movement
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
         self.speed = 5
 
-# falling objects
+    def draw_crab(self):
+        # clear the previous image
+        self.image.fill((0, 0, 0, 0)) # transparent fill
+
+        # proportional sizing of crab parts
+        body_width = int(self.current_width * 0.5)
+        body_height = int(self.current_height * 0.375)
+        eye_size = int(self.current_width * 0.0625)
+        claw_width = int(self.current_width * 0.125)
+        claw_height = int(self.current_height * 0.125)
+        leg_width = int(self.current_width * 0.0625)
+        leg_height = int(self.current_height * 0.125)
+
+        # draw body
+        pygame.draw.rect(self.image, red, (int(self.current_width * 0.25), int(self.current_height * 0.25), body_width, body_height))
+
+        # draw eyes
+        pygame.draw.rect(self.image, black, (int(self.current_width * 0.3125), int(self.current_height * 0.3125), eye_size, eye_size))
+        pygame.draw.rect(self.image, black, (int(self.current_width * 0.625), int(self.current_height * 0.3125), eye_size, eye_size))
+
+        # draw claws
+        pygame.draw.rect(self.image, red, (int(self.current_width * 0.125), int(self.current_width * 0.375), claw_width, claw_height))
+        pygame.draw.rect(self.image, red, (int(self.current_width * 0.75), int(self.current_width * 0.375), claw_width, claw_height))
+
+        # draw legs
+        leg_positions = [
+            (int(self.current_width * 0.25), int(self.current_height * 0.625)),
+            (int(self.current_width * 0.3125), int(self.current_height * 0.625)),
+            (int(self.current_width * 0.625), int(self.current_height * 0.625)),
+            (int(self.current_width * 0.6875), int(self.current_height * 0.625))
+        ]
+
+        for x, y in leg_positions:
+            pygame.draw.rect(self.image, red, (x, y, leg_width, leg_height))
+
+    def grow(self):
+        # increased size by 5% each time
+        growth_factor = 1.05
+        self.current_width = int(self.current_width * growth_factor)
+        self.current_height = int(self.current_height * growth_factor)
+
+        # recreate the image with the new size
+        self.image = pygame.Surface((self.current_width, self.current_height), pygame.SRCALPHA)
+        self.draw_crab()
+
+        # update rect to maintain position
+        old_center = self.rect.center
+        self.rect = self.image.get_rect()
+        self.rect.center = old_center
+
+    def reset_size(self):
+        # reset the crab to its orginal size
+        self.current_width = self.base_width
+        self.current_height = self.base_height
+        self.image = pygame.Surface((self.current_width, self.current_height), pygame.SRCALPHA)
+        self.draw_crab()
+        self.rect = self.image.get_rect(center=self.rect.center) # keep the crab centered
+
+# falling objects class
 class Falling(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
@@ -62,15 +112,15 @@ class Falling(pygame.sprite.Sprite):
         if self.rect.top > SCREEN_HEIGHT:
             self.kill()
 
-# game setup
+# main game function
 def main():
-    # initialize pygame
+    # intialize pygame
     pygame.init()
 
     # clock for game speed
     clock = pygame.time.Clock()
 
-    # create player crab
+    # create a player crab
     player = Crab(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 100)
 
     # sprite groups
@@ -84,21 +134,24 @@ def main():
     # game loop
     running = True
     spawn_timer = 0
+    growth_timer = 0 # timer for crab growth
+    GROWTH_INTERVAL = 120 # 2 second at 60FPS(60 * 2 = 120)
 
     while running:
         # event handling
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-            # Add restart functionality when game is over
+            # restart when game is over
             if game_over and event.type == pygame.KEYDOWN and event.key == pygame.K_r:
                 # reset game
                 player.rect.x = SCREEN_WIDTH // 2
                 player.rect.y = SCREEN_HEIGHT - 100
+                player.reset_size()
                 falling_objects.empty()
                 game_over = False
 
-        # only allow movement if game is not over
+        # movement if game is not over
         if not game_over:
             # player movement
             keys = pygame.key.get_pressed()
@@ -113,12 +166,19 @@ def main():
                 falling_objects.add(Falling())
                 spawn_timer = 0
 
+            # growth timer
+            growth_timer += 1
+            if growth_timer >= GROWTH_INTERVAL:
+                player.grow() # grow crab
+                growth_timer = 0 # reset timer
+
             # update
             all_sprites.update()
             falling_objects.update()
 
             # collision detection
-            if pygame.sprite.spritecollideany(player, falling_objects):
+            collided_objects = pygame.sprite.spritecollide(player, falling_objects, False)
+            if collided_objects:
                 game_over = True
 
         # drawing
@@ -128,20 +188,17 @@ def main():
 
         # game over screen
         if game_over:
-            game_over_text = font.render("Game Over Press R to Restart.", True, red)
-            screen.blit(game_over_text, (SCREEN_WIDTH // 2 - 200, SCREEN_HEIGHT // 2))
+            game_over_text = font.render("Game Over! Press R to Restart", True, black)
+            screen.blit(game_over_text, (SCREEN_WIDTH // 2 - game_over_text.get_width() // 2, SCREEN_HEIGHT // 2))
 
-        # update display
+        # refresh the display
         pygame.display.flip()
-
-        # cap the frame rate
-        clock.tick(60)
+        clock.tick(60) # limit to 60 frames per second
 
     pygame.quit()
 
-# run game
+# run the game
 if __name__ == "__main__":
     main()
 
-
-    
+            
